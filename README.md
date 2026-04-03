@@ -1,6 +1,13 @@
 # skill-installer
 
-Install Claude Code skills from GitHub with one command.
+**Claude Code** supports custom skills — Markdown files that teach Claude how to approach specific tasks (code reviews, standups, debugging workflows, and more). Skills live in a local directory and are picked up automatically when you start a session.
+
+`skill-installer` is a CLI tool that fetches skills from GitHub and installs them into your skills directory. You point it at a GitHub URL, it clones the repo locally, copies the skill folder, and writes a metadata file so the tool knows where the skill came from. When a skill author pushes an update, one command brings all your skills up to date.
+
+**You need this if you want to:**
+- Install skills shared by others without manually cloning repos and copying folders
+- Keep installed skills in sync with their upstream sources
+- Manage skills from multiple GitHub repos through a single tool
 
 ## Setup
 
