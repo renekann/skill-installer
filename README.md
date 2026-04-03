@@ -4,10 +4,31 @@ Install Claude Code skills from GitHub with one command.
 
 ## Setup
 
+### pipx (recommended)
+
 ```bash
-# Make executable and symlink to PATH
-chmod +x /path/to/skill_installer.py
-ln -s /path/to/skill_installer.py /usr/local/bin/skill-install
+pipx install skill-installer
+```
+
+### Homebrew
+
+```bash
+brew tap renekann/skill-installer
+brew install skill-installer
+```
+
+### pip
+
+```bash
+pip install skill-installer
+```
+
+### Manual (symlink)
+
+```bash
+git clone https://github.com/renekann/skill-installer.git
+chmod +x skill-installer/skill_installer.py
+ln -s "$PWD/skill-installer/skill_installer.py" /usr/local/bin/skill-install
 ```
 
 ## Usage
