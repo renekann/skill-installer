@@ -199,6 +199,7 @@ def purge_cache(cache_dir: Path) -> None:
 
 
 def main():
+    """Entry point: parse CLI args and dispatch to install/update/purge."""
     result = subprocess.run(["git", "--version"], capture_output=True)
     if result.returncode != 0:
         print("Error: git is required but not found in PATH", file=sys.stderr)
