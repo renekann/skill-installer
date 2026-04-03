@@ -59,3 +59,46 @@ def parse_github_url(url: str) -> dict:
         "path": path,
         "skill_name": skill_name,
     }
+
+
+def _clone_url(owner: str, repo: str) -> str:
+    """Return the clone URL for a GitHub repo. Extracted for testability."""
+    return f"https://github.com/{owner}/{repo}"
+
+
+def _run_git(args: list, cwd: Path = None) -> subprocess.CompletedProcess:
+    result = subprocess.run(
+        ["git"] + args,
+        cwd=str(cwd) if cwd else None,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed:\n{result.stderr.strip()}")
+    return result
+
+
+def ensure_repo_cached(owner: str, repo: str, cache_dir: Path) -> Path:
+    """Clone repo if not cached, otherwise fetch and reset to origin/HEAD."""
+    repo_path = cache_dir / owner / repo
+    if repo_path.exists():
+        _run_git(["fetch", "--depth", "1", "origin"], cwd=repo_path)
+        _run_git(["reset", "--hard", "origin/HEAD"], cwd=repo_path)
+    else:
+        repo_path.parent.mkdir(parents=True, exist_ok=True)
+        _run_git(["clone", "--depth", "1", _clone_url(owner, repo), str(repo_path)])
+    return repo_path
+
+
+def get_current_ref(repo_path: Path) -> str:
+    """Return the current HEAD commit hash."""
+    return _run_git(["rev-parse", "HEAD"], cwd=repo_path).stdout.strip()
+
+
+def pull_repo(repo_path: Path) -> tuple[str, str]:
+    """Fetch + reset to origin/HEAD. Returns (old_ref, new_ref)."""
+    old_ref = get_current_ref(repo_path)
+    _run_git(["fetch", "--depth", "1", "origin"], cwd=repo_path)
+    _run_git(["reset", "--hard", "origin/HEAD"], cwd=repo_path)
+    new_ref = get_current_ref(repo_path)
+    return old_ref, new_ref
