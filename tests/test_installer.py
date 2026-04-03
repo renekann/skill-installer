@@ -127,3 +127,71 @@ def test_install_skill_already_exists(tmp_path):
             )
     finally:
         skill_installer._clone_url = original
+
+
+from skill_installer import update_all
+
+
+def test_update_all_no_skills(tmp_path, capsys):
+    install_dir = tmp_path / "skills"
+    install_dir.mkdir()
+    update_all(install_dir, tmp_path / "cache")
+    assert "No installed skills" in capsys.readouterr().out
+
+
+def test_update_all_already_up_to_date(tmp_path, capsys):
+    remote = make_local_repo(tmp_path, {"skills/my-skill/SKILL.md": "v1"})
+    cache_dir = tmp_path / "cache"
+    install_dir = tmp_path / "skills"
+    install_dir.mkdir()
+
+    import skill_installer
+    original = skill_installer._clone_url
+    skill_installer._clone_url = lambda o, r: str(remote)
+
+    try:
+        install_skill(
+            "https://github.com/o/r/tree/main/skills/my-skill",
+            install_dir,
+            cache_dir,
+        )
+        capsys.readouterr()  # clear output
+        update_all(install_dir, cache_dir)
+        out = capsys.readouterr().out
+        assert "up-to-date" in out
+    finally:
+        skill_installer._clone_url = original
+
+
+def test_update_all_updates_skill(tmp_path, capsys):
+    remote = make_local_repo(tmp_path, {"skills/my-skill/SKILL.md": "v1"})
+    cache_dir = tmp_path / "cache"
+    install_dir = tmp_path / "skills"
+    install_dir.mkdir()
+
+    import skill_installer
+    original = skill_installer._clone_url
+    skill_installer._clone_url = lambda o, r: str(remote)
+
+    try:
+        install_skill(
+            "https://github.com/o/r/tree/main/skills/my-skill",
+            install_dir,
+            cache_dir,
+        )
+
+        # Add a new commit to the remote
+        (remote / "skills" / "my-skill" / "SKILL.md").write_text("v2")
+        subprocess.run(["git", "add", "."], cwd=remote, check=True, capture_output=True)
+        subprocess.run(["git", "-c", "user.email=t@t.com", "-c", "user.name=T",
+                        "commit", "-m", "update"], cwd=remote, check=True, capture_output=True)
+
+        capsys.readouterr()
+        update_all(install_dir, cache_dir)
+        out = capsys.readouterr().out
+        assert "updated" in out
+        assert (install_dir / "my-skill" / "SKILL.md").read_text() == "v2"
+        meta = json.loads((install_dir / "my-skill" / METADATA_FILE).read_text())
+        assert meta["updated_at"] != meta["installed_at"]
+    finally:
+        skill_installer._clone_url = original

@@ -134,3 +134,56 @@ def install_skill(url: str, install_dir: Path, cache_dir: Path) -> None:
     }
     (dest / METADATA_FILE).write_text(json.dumps(metadata, indent=2))
     print(f"Installed '{skill_name}' to {dest}")
+
+
+def update_all(install_dir: Path, cache_dir: Path) -> None:
+    """Update all installed skills to latest HEAD of their source repos."""
+    metadata_files = list(install_dir.glob(f"*/{METADATA_FILE}"))
+    if not metadata_files:
+        print("No installed skills found.")
+        return
+
+    # Group by repo
+    by_repo: dict[tuple, list] = {}
+    for mf in metadata_files:
+        meta = json.loads(mf.read_text())
+        key = (meta["owner"], meta["repo"])
+        by_repo.setdefault(key, []).append((mf, meta))
+
+    # Pull each repo once, then update each skill
+    for (owner, repo), skills in by_repo.items():
+        repo_path = cache_dir / owner / repo
+        if not repo_path.exists():
+            print(f"Re-cloning {owner}/{repo}...")
+            ensure_repo_cached(owner, repo, cache_dir)
+            old_ref = new_ref = get_current_ref(repo_path)
+        else:
+            old_ref, new_ref = pull_repo(repo_path)
+
+        for mf, meta in skills:
+            skill_dir = mf.parent
+            skill_name = skill_dir.name
+            source = repo_path / meta["path"]
+
+            if not source.is_dir():
+                print(f"  FAILED {skill_name}: path '{meta['path']}' not found in repo")
+                continue
+
+            if old_ref == new_ref:
+                print(f"  up-to-date {skill_name}")
+                continue
+
+            # Replace contents, preserving metadata file
+            for item in skill_dir.iterdir():
+                if item.name == METADATA_FILE:
+                    continue
+                shutil.rmtree(item) if item.is_dir() else item.unlink()
+
+            for item in source.iterdir():
+                dest_item = skill_dir / item.name
+                shutil.copytree(item, dest_item) if item.is_dir() else shutil.copy2(item, dest_item)
+
+            meta["ref"] = new_ref
+            meta["updated_at"] = datetime.now(timezone.utc).isoformat()
+            mf.write_text(json.dumps(meta, indent=2))
+            print(f"  updated {skill_name} ({old_ref[:7]}..{new_ref[:7]})")
