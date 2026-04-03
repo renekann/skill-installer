@@ -83,7 +83,7 @@ def ensure_repo_cached(owner: str, repo: str, cache_dir: Path) -> Path:
     repo_path = cache_dir / owner / repo
     if repo_path.exists():
         _run_git(["fetch", "--depth", "1", "origin"], cwd=repo_path)
-        _run_git(["reset", "--hard", "origin/HEAD"], cwd=repo_path)
+        _run_git(["reset", "--hard", "FETCH_HEAD"], cwd=repo_path)
     else:
         repo_path.parent.mkdir(parents=True, exist_ok=True)
         _run_git(["clone", "--depth", "1", _clone_url(owner, repo), str(repo_path)])
@@ -99,7 +99,7 @@ def pull_repo(repo_path: Path) -> tuple[str, str]:
     """Fetch + reset to origin/HEAD. Returns (old_ref, new_ref)."""
     old_ref = get_current_ref(repo_path)
     _run_git(["fetch", "--depth", "1", "origin"], cwd=repo_path)
-    _run_git(["reset", "--hard", "origin/HEAD"], cwd=repo_path)
+    _run_git(["reset", "--hard", "FETCH_HEAD"], cwd=repo_path)
     new_ref = get_current_ref(repo_path)
     return old_ref, new_ref
 
@@ -109,6 +109,8 @@ def install_skill(url: str, install_dir: Path, cache_dir: Path) -> None:
     parsed = parse_github_url(url)
     skill_name = parsed["skill_name"]
     dest = install_dir / skill_name
+
+    install_dir.mkdir(parents=True, exist_ok=True)
 
     if dest.exists():
         raise FileExistsError(f"Skill '{skill_name}' already exists at {dest}")
@@ -147,6 +149,13 @@ def update_all(install_dir: Path, cache_dir: Path) -> None:
     by_repo: dict[tuple, list] = {}
     for mf in metadata_files:
         meta = json.loads(mf.read_text())
+        try:
+            _validate_metadata_path(meta["owner"], "owner")
+            _validate_metadata_path(meta["repo"], "repo")
+            _validate_metadata_path(meta["path"], "path")
+        except (ValueError, KeyError) as e:
+            print(f"  SKIPPED {mf.parent.name}: invalid metadata — {e}")
+            continue
         key = (meta["owner"], meta["repo"])
         by_repo.setdefault(key, []).append((mf, meta))
 
@@ -196,6 +205,15 @@ def purge_cache(cache_dir: Path) -> None:
         return
     shutil.rmtree(cache_dir)
     print(f"Cache purged: {cache_dir}")
+
+
+def _validate_metadata_path(value: str, field: str) -> None:
+    """Raise ValueError if value contains path traversal or is absolute."""
+    p = Path(value)
+    if p.is_absolute():
+        raise ValueError(f"Metadata field '{field}' must be a relative path, got: {value!r}")
+    if ".." in p.parts:
+        raise ValueError(f"Metadata field '{field}' must not contain '..', got: {value!r}")
 
 
 def main():
