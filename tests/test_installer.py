@@ -195,3 +195,22 @@ def test_update_all_updates_skill(tmp_path, capsys):
         assert meta["updated_at"] != meta["installed_at"]
     finally:
         skill_installer._clone_url = original
+
+
+from skill_installer import purge_cache
+
+
+def test_purge_cache_deletes_cache(tmp_path, capsys):
+    cache_dir = tmp_path / "cache"
+    (cache_dir / "owner" / "repo").mkdir(parents=True)
+    (cache_dir / "owner" / "repo" / "file.txt").write_text("data")
+
+    purge_cache(cache_dir)
+    assert not cache_dir.exists()
+    assert "purged" in capsys.readouterr().out
+
+
+def test_purge_cache_nonexistent(tmp_path, capsys):
+    cache_dir = tmp_path / "nonexistent"
+    purge_cache(cache_dir)
+    assert "does not exist" in capsys.readouterr().out

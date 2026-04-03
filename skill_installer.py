@@ -187,3 +187,12 @@ def update_all(install_dir: Path, cache_dir: Path) -> None:
             meta["updated_at"] = datetime.now(timezone.utc).isoformat()
             mf.write_text(json.dumps(meta, indent=2))
             print(f"  updated {skill_name} ({old_ref[:7]}..{new_ref[:7]})")
+
+
+def purge_cache(cache_dir: Path) -> None:
+    """Delete the local git repo cache. Installed skills are not affected."""
+    if not cache_dir.exists():
+        print(f"Cache directory does not exist: {cache_dir}")
+        return
+    shutil.rmtree(cache_dir)
+    print(f"Cache purged: {cache_dir}")
