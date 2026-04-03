@@ -52,3 +52,18 @@ def test_blob_at_repo_root_raises():
     # blob URL with file directly at repo root (no parent folder = no skill name)
     with pytest.raises(ValueError, match="skill folder path"):
         parse_github_url("https://github.com/foo/bar/blob/main/SKILL.md")
+
+
+import subprocess as _subprocess
+import sys as _sys
+
+
+def test_version_flag():
+    result = _subprocess.run(
+        [_sys.executable, "/Users/rene/dev/skill-installer/skill_installer.py", "--version"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    output = result.stdout + result.stderr
+    assert "skill-install" in output

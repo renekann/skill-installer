@@ -1,0 +1,13 @@
+[project]
+name = "skill-installer"
+version = "0.1.0"
+description = "Install Claude Code skills from GitHub"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+skill-install = "skill_installer:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

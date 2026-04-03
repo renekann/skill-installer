@@ -11,6 +11,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+except ImportError:
+    PackageNotFoundError = ModuleNotFoundError
+    _pkg_version = None
+
+try:
+    __version__ = _pkg_version("skill-installer") if _pkg_version else "dev"
+except (PackageNotFoundError, Exception):
+    __version__ = "dev"
+
 DEFAULT_INSTALL_DIR = Path.home() / "Documents" / "claude-config" / "skills"
 DEFAULT_CACHE_DIR = Path.home() / ".skill-installer" / "repos"
 METADATA_FILE = ".skill-source.json"
@@ -230,6 +242,7 @@ def main():
         prog="skill-install",
         description="Install Claude Code skills from GitHub",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("url", nargs="?", help="GitHub URL of the skill to install")
     group.add_argument("--update-all", action="store_true", help="Update all installed skills to latest")
