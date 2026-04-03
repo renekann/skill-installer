@@ -70,3 +70,60 @@ def test_pull_repo_already_up_to_date(tmp_path):
         assert old_ref == new_ref  # no new commits
     finally:
         skill_installer._clone_url = original
+
+
+from skill_installer import install_skill, METADATA_FILE
+
+
+def test_install_skill(tmp_path):
+    remote = make_local_repo(tmp_path, {
+        "skills/my-skill/SKILL.md": "# My Skill",
+        "skills/my-skill/prompts/prompt.md": "do stuff",
+    })
+    cache_dir = tmp_path / "cache"
+    install_dir = tmp_path / "skills"
+    install_dir.mkdir()
+
+    import skill_installer
+    original = skill_installer._clone_url
+    skill_installer._clone_url = lambda o, r: str(remote)
+
+    try:
+        install_skill(
+            "https://github.com/testowner/testrepo/tree/main/skills/my-skill",
+            install_dir,
+            cache_dir,
+        )
+        skill_dir = install_dir / "my-skill"
+        assert (skill_dir / "SKILL.md").exists()
+        assert (skill_dir / "prompts" / "prompt.md").exists()
+        meta = json.loads((skill_dir / METADATA_FILE).read_text())
+        assert meta["owner"] == "testowner"
+        assert meta["repo"] == "testrepo"
+        assert meta["path"] == "skills/my-skill"
+        assert meta["skill_name"] == "my-skill"
+        assert "installed_at" in meta
+        assert "ref" in meta
+    finally:
+        skill_installer._clone_url = original
+
+
+def test_install_skill_already_exists(tmp_path):
+    remote = make_local_repo(tmp_path, {"skills/my-skill/SKILL.md": "# My Skill"})
+    cache_dir = tmp_path / "cache"
+    install_dir = tmp_path / "skills"
+    (install_dir / "my-skill").mkdir(parents=True)
+
+    import skill_installer
+    original = skill_installer._clone_url
+    skill_installer._clone_url = lambda o, r: str(remote)
+
+    try:
+        with pytest.raises(FileExistsError, match="already exists"):
+            install_skill(
+                "https://github.com/testowner/testrepo/tree/main/skills/my-skill",
+                install_dir,
+                cache_dir,
+            )
+    finally:
+        skill_installer._clone_url = original

@@ -102,3 +102,35 @@ def pull_repo(repo_path: Path) -> tuple[str, str]:
     _run_git(["reset", "--hard", "origin/HEAD"], cwd=repo_path)
     new_ref = get_current_ref(repo_path)
     return old_ref, new_ref
+
+
+def install_skill(url: str, install_dir: Path, cache_dir: Path) -> None:
+    """Install a skill from a GitHub URL into install_dir."""
+    parsed = parse_github_url(url)
+    skill_name = parsed["skill_name"]
+    dest = install_dir / skill_name
+
+    if dest.exists():
+        raise FileExistsError(f"Skill '{skill_name}' already exists at {dest}")
+
+    repo_path = ensure_repo_cached(parsed["owner"], parsed["repo"], cache_dir)
+    source = repo_path / parsed["path"]
+
+    if not source.is_dir():
+        raise FileNotFoundError(f"Skill folder not found in repo: {parsed['path']}")
+
+    shutil.copytree(source, dest)
+
+    now = datetime.now(timezone.utc).isoformat()
+    metadata = {
+        "source_url": url,
+        "owner": parsed["owner"],
+        "repo": parsed["repo"],
+        "ref": get_current_ref(repo_path),
+        "path": parsed["path"],
+        "skill_name": skill_name,
+        "installed_at": now,
+        "updated_at": now,
+    }
+    (dest / METADATA_FILE).write_text(json.dumps(metadata, indent=2))
+    print(f"Installed '{skill_name}' to {dest}")
