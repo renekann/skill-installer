@@ -196,3 +196,42 @@ def purge_cache(cache_dir: Path) -> None:
         return
     shutil.rmtree(cache_dir)
     print(f"Cache purged: {cache_dir}")
+
+
+def main():
+    result = subprocess.run(["git", "--version"], capture_output=True)
+    if result.returncode != 0:
+        print("Error: git is required but not found in PATH", file=sys.stderr)
+        sys.exit(1)
+
+    install_dir = Path(os.environ.get("SKILL_INSTALL_DIR", str(DEFAULT_INSTALL_DIR))).expanduser()
+    cache_dir = Path(os.environ.get("SKILL_CACHE_DIR", str(DEFAULT_CACHE_DIR))).expanduser()
+
+    parser = argparse.ArgumentParser(
+        prog="skill-install",
+        description="Install Claude Code skills from GitHub",
+    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("url", nargs="?", help="GitHub URL of the skill to install")
+    group.add_argument("--update-all", action="store_true", help="Update all installed skills to latest")
+    group.add_argument("--purge-cache", action="store_true", help="Delete the local git repo cache")
+
+    args = parser.parse_args()
+
+    try:
+        if args.update_all:
+            update_all(install_dir, cache_dir)
+        elif args.purge_cache:
+            purge_cache(cache_dir)
+        elif args.url:
+            install_skill(args.url, install_dir, cache_dir)
+        else:
+            parser.print_help()
+            sys.exit(1)
+    except (ValueError, FileExistsError, FileNotFoundError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
