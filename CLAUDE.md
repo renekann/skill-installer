@@ -1,5 +1,11 @@
 # skill-installer — Claude Instructions
 
+## Language
+
+**Everything in this project must be written in English.** No exceptions.
+
+This includes: code comments, docstrings, commit messages, CHANGELOG entries, README, error messages, and any other text written to files in this repo.
+
 ## What this project is
 
 A Python CLI tool (`skill_installer.py`) that installs Claude Code skills from GitHub URLs. Single-file, stdlib-only, no external runtime dependencies.

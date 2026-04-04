@@ -5,7 +5,7 @@ All notable changes to skill-installer are documented here.
 ## [0.1.4] - 2026-04-04
 
 ### Added
-- GitHub Release wird automatisch bei Tag-Push erstellt, mit dem CHANGELOG-Abschnitt der Version als Release Notes
+- GitHub Release is automatically created on tag push, using the matching CHANGELOG section as release notes
 
 ## [0.1.3] - 2026-04-04
 
