@@ -2,6 +2,11 @@
 
 All notable changes to skill-installer are documented here.
 
+## [0.1.5] - 2026-04-04
+
+### Fixed
+- `--version` now shows the correct version when installed via Homebrew (reads `SKILL_INSTALLER_VERSION` env var injected by the Homebrew wrapper script)
+
 ## [0.1.4] - 2026-04-04
 
 ### Added

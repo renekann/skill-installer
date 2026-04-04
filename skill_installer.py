@@ -21,7 +21,7 @@ except ImportError:
 try:
     __version__ = _pkg_version("skill-installer") if _pkg_version else "dev"
 except (PackageNotFoundError, Exception):
-    __version__ = "dev"
+    __version__ = os.environ.get("SKILL_INSTALLER_VERSION", "dev")
 
 DEFAULT_INSTALL_DIR = Path.home() / ".claude" / "skills"
 DEFAULT_CACHE_DIR = Path.home() / ".skill-installer" / "repos"
