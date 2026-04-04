@@ -23,9 +23,31 @@ try:
 except (PackageNotFoundError, Exception):
     __version__ = "dev"
 
-DEFAULT_INSTALL_DIR = Path.home() / "Documents" / "claude-config" / "skills"
+DEFAULT_INSTALL_DIR = Path.home() / ".claude" / "skills"
 DEFAULT_CACHE_DIR = Path.home() / ".skill-installer" / "repos"
+CONFIG_FILE = Path.home() / ".skill-installer" / "config"
 METADATA_FILE = ".skill-source.json"
+
+
+def load_config() -> dict:
+    """Read ~/.skill-installer/config (KEY=VALUE) and return values not already in env.
+
+    Env vars always take precedence. Lines starting with # and blank lines are ignored.
+    Values may use ~ for home directory expansion.
+    """
+    config = {}
+    if not CONFIG_FILE.exists():
+        return config
+    for line in CONFIG_FILE.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if key and key not in os.environ:
+            config[key] = value
+    return config
 
 
 def parse_github_url(url: str) -> dict:
@@ -235,8 +257,9 @@ def main():
         print("Error: git is required but not found in PATH", file=sys.stderr)
         sys.exit(1)
 
-    install_dir = Path(os.environ.get("SKILL_INSTALL_DIR", str(DEFAULT_INSTALL_DIR))).expanduser()
-    cache_dir = Path(os.environ.get("SKILL_CACHE_DIR", str(DEFAULT_CACHE_DIR))).expanduser()
+    config = load_config()
+    install_dir = Path(os.environ.get("SKILL_INSTALL_DIR", config.get("SKILL_INSTALL_DIR", str(DEFAULT_INSTALL_DIR)))).expanduser()
+    cache_dir = Path(os.environ.get("SKILL_CACHE_DIR", config.get("SKILL_CACHE_DIR", str(DEFAULT_CACHE_DIR)))).expanduser()
 
     parser = argparse.ArgumentParser(
         prog="skill-install",

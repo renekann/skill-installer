@@ -58,6 +58,35 @@ import subprocess as _subprocess
 import sys as _sys
 
 
+def test_load_config_reads_key_value(tmp_path, monkeypatch):
+    import skill_installer
+    config_file = tmp_path / "config"
+    config_file.write_text("SKILL_INSTALL_DIR=/tmp/myskills\n# comment\nSKILL_CACHE_DIR=/tmp/cache\n\n")
+    monkeypatch.setattr(skill_installer, "CONFIG_FILE", config_file)
+    monkeypatch.delenv("SKILL_INSTALL_DIR", raising=False)
+    monkeypatch.delenv("SKILL_CACHE_DIR", raising=False)
+    config = skill_installer.load_config()
+    assert config["SKILL_INSTALL_DIR"] == "/tmp/myskills"
+    assert config["SKILL_CACHE_DIR"] == "/tmp/cache"
+
+
+def test_load_config_env_takes_precedence(tmp_path, monkeypatch):
+    import skill_installer
+    config_file = tmp_path / "config"
+    config_file.write_text("SKILL_INSTALL_DIR=/tmp/from-file\n")
+    monkeypatch.setattr(skill_installer, "CONFIG_FILE", config_file)
+    monkeypatch.setenv("SKILL_INSTALL_DIR", "/tmp/from-env")
+    config = skill_installer.load_config()
+    assert "SKILL_INSTALL_DIR" not in config
+
+
+def test_load_config_missing_file(tmp_path, monkeypatch):
+    import skill_installer
+    monkeypatch.setattr(skill_installer, "CONFIG_FILE", tmp_path / "nonexistent")
+    config = skill_installer.load_config()
+    assert config == {}
+
+
 def test_version_flag():
     result = _subprocess.run(
         [_sys.executable, "/Users/rene/dev/skill-installer/skill_installer.py", "--version"],

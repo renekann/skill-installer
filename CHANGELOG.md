@@ -2,6 +2,14 @@
 
 All notable changes to skill-installer are documented here.
 
+## [0.1.3] - 2026-04-04
+
+### Added
+- Config file support: `~/.skill-installer/config` with `KEY=VALUE` entries — env vars take precedence
+
+### Changed
+- Default `SKILL_INSTALL_DIR` changed from `~/Documents/claude-config/skills` to `~/.claude/skills`
+
 ## [0.1.2] - 2026-04-04
 
 ### Changed

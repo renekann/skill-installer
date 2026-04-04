@@ -53,15 +53,30 @@ skill-install --purge-cache
 
 ## Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SKILL_INSTALL_DIR` | `~/Documents/claude-config/skills` | Where skills are installed |
-| `SKILL_CACHE_DIR` | `~/.skill-installer/repos` | Local git clone cache |
+### Config file (recommended)
+
+Create `~/.skill-installer/config` with `KEY=VALUE` entries. Lines starting with `#` are ignored.
+
+```
+SKILL_INSTALL_DIR=~/.claude/skills
+SKILL_CACHE_DIR=~/.skill-installer/repos
+```
+
+### Environment variables
+
+Env vars take precedence over the config file.
 
 ```bash
 export SKILL_INSTALL_DIR=~/my-skills
 skill-install https://github.com/...
 ```
+
+### Defaults
+
+| Variable | Default |
+|----------|---------|
+| `SKILL_INSTALL_DIR` | `~/.claude/skills` |
+| `SKILL_CACHE_DIR` | `~/.skill-installer/repos` |
 
 ## How it works
 
