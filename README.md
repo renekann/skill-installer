@@ -11,17 +11,17 @@
 
 ## Setup
 
-### pipx (recommended)
-
-```bash
-pipx install skill-installer
-```
-
-### Homebrew
+### Homebrew (recommended)
 
 ```bash
 brew tap renekann/skill-installer
 brew install skill-installer
+```
+
+### pipx
+
+```bash
+pipx install skill-installer
 ```
 
 ### pip
@@ -35,21 +35,26 @@ pip install skill-installer
 ```bash
 git clone https://github.com/renekann/skill-installer.git
 chmod +x skill-installer/skill_installer.py
-ln -s "$PWD/skill-installer/skill_installer.py" /usr/local/bin/skill-install
+ln -s "$PWD/skill-installer/skill_installer.py" /usr/local/bin/ski
 ```
 
 ## Usage
 
 ```bash
 # Install a skill (blob, tree, or raw.githubusercontent.com URL)
-skill-install https://github.com/mblode/agent-skills/blob/main/skills/optimise-seo/SKILL.md
+ski https://github.com/mblode/agent-skills/blob/main/skills/optimise-seo/SKILL.md
 
 # Update all installed skills to latest
-skill-install --update-all
+ski --update-all
 
 # Clear the local git repo cache
-skill-install --purge-cache
+ski --purge-cache
+
+# Show version
+ski --version
 ```
+
+`skill-install` works as an alias for `ski`.
 
 ## Configuration
 
@@ -68,7 +73,7 @@ Env vars take precedence over the config file.
 
 ```bash
 export SKILL_INSTALL_DIR=~/my-skills
-skill-install https://github.com/...
+ski https://github.com/...
 ```
 
 ### Defaults
@@ -85,7 +90,7 @@ skill-install https://github.com/...
 3. The skill folder is copied into `SKILL_INSTALL_DIR/{skill-name}/`.
 4. A `.skill-source.json` file is written into the skill folder with the source URL, repo, and commit hash.
 
-Multiple skills from the same repo share one cached clone. `--update-all` runs one `git pull` per repo, then re-copies all affected skill folders.
+Multiple skills from the same repo share one cached clone. `ski --update-all` runs one `git pull` per repo, then re-copies all affected skill folders.
 
 ## Requirements
 
