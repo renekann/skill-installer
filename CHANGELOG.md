@@ -2,6 +2,12 @@
 
 All notable changes to skill-installer are documented here.
 
+## [0.1.7] - 2026-04-04
+
+### Security
+- Fix path traversal via `..` in URL path component — now raises `ValueError` in `parse_github_url()`
+- Fix `shutil.copytree` following symlinks from cloned repos — `symlinks=True` prevents exfiltration of local files via malicious repos
+
 ## [0.1.6] - 2026-04-04
 
 ### Added

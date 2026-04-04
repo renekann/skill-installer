@@ -85,6 +85,9 @@ def parse_github_url(url: str) -> dict:
     if not path:
         raise ValueError(f"Could not determine skill folder path from URL: {url}")
 
+    if ".." in Path(path).parts:
+        raise ValueError(f"URL path must not contain '..': {url}")
+
     skill_name = path.rstrip("/").split("/")[-1]
     return {
         "owner": owner,
@@ -155,7 +158,7 @@ def install_skill(url: str, install_dir: Path, cache_dir: Path) -> None:
     if not source.is_dir():
         raise FileNotFoundError(f"Skill folder not found in repo: {parsed['path']}")
 
-    shutil.copytree(source, dest)
+    shutil.copytree(source, dest, symlinks=True)
 
     now = datetime.now(timezone.utc).isoformat()
     metadata = {
@@ -224,7 +227,7 @@ def update_all(install_dir: Path, cache_dir: Path) -> None:
 
             for item in source.iterdir():
                 dest_item = skill_dir / item.name
-                shutil.copytree(item, dest_item) if item.is_dir() else shutil.copy2(item, dest_item)
+                shutil.copytree(item, dest_item, symlinks=True) if item.is_dir() else shutil.copy2(item, dest_item)
 
             meta["ref"] = new_ref
             meta["updated_at"] = datetime.now(timezone.utc).isoformat()

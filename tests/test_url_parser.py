@@ -54,6 +54,16 @@ def test_blob_at_repo_root_raises():
         parse_github_url("https://github.com/foo/bar/blob/main/SKILL.md")
 
 
+def test_path_traversal_in_url_raises():
+    with pytest.raises(ValueError, match="must not contain '\\.\\.'"):
+        parse_github_url("https://github.com/foo/bar/tree/main/skills/../../.ssh")
+
+
+def test_path_traversal_raw_url_raises():
+    with pytest.raises(ValueError, match="must not contain '\\.\\.'"):
+        parse_github_url("https://raw.githubusercontent.com/foo/bar/main/skills/../../../etc/SKILL.md")
+
+
 import subprocess as _subprocess
 import sys as _sys
 
