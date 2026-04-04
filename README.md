@@ -44,8 +44,20 @@ ln -s "$PWD/skill-installer/skill_installer.py" /usr/local/bin/ski
 # Install a skill (blob, tree, or raw.githubusercontent.com URL)
 ski https://github.com/mblode/agent-skills/blob/main/skills/optimise-seo/SKILL.md
 
+# List all installed skills
+ski --list
+
+# Show details for a specific skill
+ski --info optimise-seo
+
 # Update all installed skills to latest
-ski --update-all
+ski -u
+
+# Update a specific skill
+ski -u optimise-seo
+
+# Remove a skill
+ski --remove optimise-seo
 
 # Clear the local git repo cache
 ski --purge-cache

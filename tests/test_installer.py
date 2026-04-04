@@ -214,3 +214,94 @@ def test_purge_cache_nonexistent(tmp_path, capsys):
     cache_dir = tmp_path / "nonexistent"
     purge_cache(cache_dir)
     assert "does not exist" in capsys.readouterr().out
+
+
+from skill_installer import list_skills, info_skill, remove_skill, update_skill
+
+
+def test_list_skills_empty(tmp_path, capsys):
+    install_dir = tmp_path / "skills"
+    install_dir.mkdir()
+    list_skills(install_dir)
+    assert "No skills" in capsys.readouterr().out
+
+
+def test_list_skills_shows_tracked_and_untracked(tmp_path, capsys):
+    install_dir = tmp_path / "skills"
+    (install_dir / "tracked-skill").mkdir(parents=True)
+    (install_dir / "tracked-skill" / METADATA_FILE).write_text(json.dumps({
+        "owner": "foo", "repo": "bar", "updated_at": "2026-04-04T00:00:00+00:00",
+    }))
+    (install_dir / "untracked-skill").mkdir()
+
+    list_skills(install_dir)
+    out = capsys.readouterr().out
+    assert "tracked-skill" in out
+    assert "foo/bar" in out
+    assert "untracked-skill" in out
+    assert "(untracked)" in out
+
+
+def test_info_skill_with_metadata(tmp_path, capsys):
+    install_dir = tmp_path / "skills"
+    (install_dir / "my-skill").mkdir(parents=True)
+    (install_dir / "my-skill" / METADATA_FILE).write_text(json.dumps({
+        "source_url": "https://github.com/foo/bar/tree/main/skills/my-skill",
+        "owner": "foo", "repo": "bar", "path": "skills/my-skill",
+        "ref": "abc123def456", "installed_at": "2026-04-04T00:00:00+00:00",
+        "updated_at": "2026-04-04T00:00:00+00:00",
+    }))
+    info_skill("my-skill", install_dir)
+    out = capsys.readouterr().out
+    assert "foo/bar" in out
+    assert "abc123def456" in out
+    assert "2026-04-04" in out
+
+
+def test_info_skill_not_installed(tmp_path):
+    with pytest.raises(FileNotFoundError, match="not installed"):
+        info_skill("nonexistent", tmp_path / "skills")
+
+
+def test_remove_skill(tmp_path, capsys):
+    install_dir = tmp_path / "skills"
+    (install_dir / "my-skill").mkdir(parents=True)
+    (install_dir / "my-skill" / "SKILL.md").write_text("content")
+
+    remove_skill("my-skill", install_dir)
+    assert not (install_dir / "my-skill").exists()
+    assert "Removed" in capsys.readouterr().out
+
+
+def test_remove_skill_not_installed(tmp_path):
+    with pytest.raises(FileNotFoundError, match="not installed"):
+        remove_skill("nonexistent", tmp_path / "skills")
+
+
+def test_update_skill_single(tmp_path, capsys):
+    remote = make_local_repo(tmp_path, {"skills/my-skill/SKILL.md": "v1"})
+    cache_dir = tmp_path / "cache"
+    install_dir = tmp_path / "skills"
+    install_dir.mkdir()
+
+    import skill_installer
+    original = skill_installer._clone_url
+    skill_installer._clone_url = lambda o, r: str(remote)
+
+    try:
+        install_skill(
+            "https://github.com/o/r/tree/main/skills/my-skill",
+            install_dir, cache_dir,
+        )
+        (remote / "skills" / "my-skill" / "SKILL.md").write_text("v2")
+        subprocess.run(["git", "add", "."], cwd=remote, check=True, capture_output=True)
+        subprocess.run(["git", "-c", "user.email=t@t.com", "-c", "user.name=T",
+                        "commit", "-m", "update"], cwd=remote, check=True, capture_output=True)
+
+        capsys.readouterr()
+        update_skill("my-skill", install_dir, cache_dir)
+        out = capsys.readouterr().out
+        assert "updated" in out
+        assert (install_dir / "my-skill" / "SKILL.md").read_text() == "v2"
+    finally:
+        skill_installer._clone_url = original

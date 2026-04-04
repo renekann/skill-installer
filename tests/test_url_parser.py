@@ -105,4 +105,4 @@ def test_version_flag():
     )
     assert result.returncode == 0
     output = result.stdout + result.stderr
-    assert "skill-install" in output
+    assert "ski" in output

@@ -2,6 +2,15 @@
 
 All notable changes to skill-installer are documented here.
 
+## [0.1.8] - 2026-04-04
+
+### Added
+- `ski --list` / `ski -l` — list all installed skills with source repo and last update date; untracked skills shown without metadata
+- `ski --remove <name>` — remove an installed skill
+- `ski --info <name>` — show source URL, repo, path, ref, install and update dates for a skill
+- `ski -u <name>` — update a single specific skill (without argument: update all)
+- Short flag `-u` as alias for update (replaces `--update-all`); `--update-all` removed
+
 ## [0.1.7] - 2026-04-04
 
 ### Security

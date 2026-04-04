@@ -175,6 +175,26 @@ def install_skill(url: str, install_dir: Path, cache_dir: Path) -> None:
     print(f"Installed '{skill_name}' to {dest}")
 
 
+def _apply_skill_update(skill_dir: Path, source: Path, mf: Path, meta: dict, old_ref: str, new_ref: str) -> str:
+    """Replace skill files from source, preserving metadata. Returns status line."""
+    skill_name = skill_dir.name
+    if not source.is_dir():
+        return f"  FAILED {skill_name}: path '{meta['path']}' not found in repo"
+    if old_ref == new_ref:
+        return f"  up-to-date {skill_name}"
+    for item in skill_dir.iterdir():
+        if item.name == METADATA_FILE:
+            continue
+        shutil.rmtree(item) if item.is_dir() else item.unlink()
+    for item in source.iterdir():
+        dest_item = skill_dir / item.name
+        shutil.copytree(item, dest_item, symlinks=True) if item.is_dir() else shutil.copy2(item, dest_item)
+    meta["ref"] = new_ref
+    meta["updated_at"] = datetime.now(timezone.utc).isoformat()
+    mf.write_text(json.dumps(meta, indent=2))
+    return f"  updated {skill_name} ({old_ref[:7]}..{new_ref[:7]})"
+
+
 def update_all(install_dir: Path, cache_dir: Path) -> None:
     """Update all installed skills to latest HEAD of their source repos."""
     metadata_files = list(install_dir.glob(f"*/{METADATA_FILE}"))
@@ -182,7 +202,6 @@ def update_all(install_dir: Path, cache_dir: Path) -> None:
         print("No installed skills found.")
         return
 
-    # Group by repo
     by_repo: dict[tuple, list] = {}
     for mf in metadata_files:
         meta = json.loads(mf.read_text())
@@ -196,7 +215,6 @@ def update_all(install_dir: Path, cache_dir: Path) -> None:
         key = (meta["owner"], meta["repo"])
         by_repo.setdefault(key, []).append((mf, meta))
 
-    # Pull each repo once, then update each skill
     for (owner, repo), skills in by_repo.items():
         repo_path = cache_dir / owner / repo
         if not repo_path.exists():
@@ -205,34 +223,89 @@ def update_all(install_dir: Path, cache_dir: Path) -> None:
             old_ref = new_ref = get_current_ref(repo_path)
         else:
             old_ref, new_ref = pull_repo(repo_path)
-
         for mf, meta in skills:
-            skill_dir = mf.parent
-            skill_name = skill_dir.name
-            source = repo_path / meta["path"]
+            print(_apply_skill_update(mf.parent, repo_path / meta["path"], mf, meta, old_ref, new_ref))
 
-            if not source.is_dir():
-                print(f"  FAILED {skill_name}: path '{meta['path']}' not found in repo")
-                continue
 
-            if old_ref == new_ref:
-                print(f"  up-to-date {skill_name}")
-                continue
+def update_skill(skill_name: str, install_dir: Path, cache_dir: Path) -> None:
+    """Update a single installed skill to latest HEAD."""
+    skill_dir = install_dir / skill_name
+    if not skill_dir.is_dir():
+        raise FileNotFoundError(f"Skill '{skill_name}' is not installed")
+    mf = skill_dir / METADATA_FILE
+    if not mf.exists():
+        raise FileNotFoundError(f"Skill '{skill_name}' has no source metadata — cannot update")
+    meta = json.loads(mf.read_text())
+    try:
+        _validate_metadata_path(meta["owner"], "owner")
+        _validate_metadata_path(meta["repo"], "repo")
+        _validate_metadata_path(meta["path"], "path")
+    except (ValueError, KeyError) as e:
+        raise ValueError(f"Invalid metadata for '{skill_name}': {e}")
+    repo_path = cache_dir / meta["owner"] / meta["repo"]
+    if not repo_path.exists():
+        print(f"Re-cloning {meta['owner']}/{meta['repo']}...")
+        ensure_repo_cached(meta["owner"], meta["repo"], cache_dir)
+        old_ref = new_ref = get_current_ref(repo_path)
+    else:
+        old_ref, new_ref = pull_repo(repo_path)
+    print(_apply_skill_update(skill_dir, repo_path / meta["path"], mf, meta, old_ref, new_ref))
 
-            # Replace contents, preserving metadata file
-            for item in skill_dir.iterdir():
-                if item.name == METADATA_FILE:
-                    continue
-                shutil.rmtree(item) if item.is_dir() else item.unlink()
 
-            for item in source.iterdir():
-                dest_item = skill_dir / item.name
-                shutil.copytree(item, dest_item, symlinks=True) if item.is_dir() else shutil.copy2(item, dest_item)
+def list_skills(install_dir: Path) -> None:
+    """List all installed skills with source repo and last update date."""
+    if not install_dir.exists():
+        print("No skills directory found.")
+        return
+    entries = []
+    for skill_dir in sorted(install_dir.iterdir()):
+        if not skill_dir.is_dir() or skill_dir.name.startswith("."):
+            continue
+        mf = skill_dir / METADATA_FILE
+        if mf.exists():
+            meta = json.loads(mf.read_text())
+            source = f"{meta.get('owner', '?')}/{meta.get('repo', '?')}"
+            updated = meta.get("updated_at", "")[:10]
+        else:
+            source, updated = "(untracked)", ""
+        entries.append((skill_dir.name, source, updated))
+    if not entries:
+        print("No skills installed.")
+        return
+    name_w = max(len(e[0]) for e in entries)
+    src_w = max(len(e[1]) for e in entries)
+    for name, source, updated in entries:
+        print(f"{name:<{name_w}}  {source:<{src_w}}  {updated}")
 
-            meta["ref"] = new_ref
-            meta["updated_at"] = datetime.now(timezone.utc).isoformat()
-            mf.write_text(json.dumps(meta, indent=2))
-            print(f"  updated {skill_name} ({old_ref[:7]}..{new_ref[:7]})")
+
+def info_skill(skill_name: str, install_dir: Path) -> None:
+    """Show metadata for an installed skill."""
+    skill_dir = install_dir / skill_name
+    if not skill_dir.is_dir():
+        raise FileNotFoundError(f"Skill '{skill_name}' is not installed")
+    mf = skill_dir / METADATA_FILE
+    if not mf.exists():
+        print(f"Skill:    {skill_name}")
+        print(f"Location: {skill_dir}")
+        print("Source:   (untracked — no metadata)")
+        return
+    meta = json.loads(mf.read_text())
+    print(f"Skill:     {skill_name}")
+    print(f"Source:    {meta.get('source_url', '?')}")
+    print(f"Repo:      {meta.get('owner', '?')}/{meta.get('repo', '?')}")
+    print(f"Path:      {meta.get('path', '?')}")
+    print(f"Ref:       {meta.get('ref', '?')}")
+    print(f"Installed: {meta.get('installed_at', '?')[:10]}")
+    print(f"Updated:   {meta.get('updated_at', '?')[:10]}")
+
+
+def remove_skill(skill_name: str, install_dir: Path) -> None:
+    """Remove an installed skill."""
+    skill_dir = install_dir / skill_name
+    if not skill_dir.is_dir():
+        raise FileNotFoundError(f"Skill '{skill_name}' is not installed")
+    shutil.rmtree(skill_dir)
+    print(f"Removed '{skill_name}'")
 
 
 def purge_cache(cache_dir: Path) -> None:
@@ -265,20 +338,35 @@ def main():
     cache_dir = Path(os.environ.get("SKILL_CACHE_DIR", config.get("SKILL_CACHE_DIR", str(DEFAULT_CACHE_DIR)))).expanduser()
 
     parser = argparse.ArgumentParser(
-        prog="skill-install",
-        description="Install Claude Code skills from GitHub",
+        prog="ski",
+        description="Install and manage Claude Code skills from GitHub",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("url", nargs="?", help="GitHub URL of the skill to install")
-    group.add_argument("--update-all", action="store_true", help="Update all installed skills to latest")
+    group.add_argument(
+        "-u", "--update", nargs="?", const="__ALL__", metavar="SKILL",
+        help="Update all installed skills, or a specific one by name",
+    )
+    group.add_argument("-l", "--list", action="store_true", help="List all installed skills")
+    group.add_argument("--info", metavar="SKILL", help="Show details for an installed skill")
+    group.add_argument("--remove", metavar="SKILL", help="Remove an installed skill")
     group.add_argument("--purge-cache", action="store_true", help="Delete the local git repo cache")
 
     args = parser.parse_args()
 
     try:
-        if args.update_all:
-            update_all(install_dir, cache_dir)
+        if args.update is not None:
+            if args.update == "__ALL__":
+                update_all(install_dir, cache_dir)
+            else:
+                update_skill(args.update, install_dir, cache_dir)
+        elif args.list:
+            list_skills(install_dir)
+        elif args.info:
+            info_skill(args.info, install_dir)
+        elif args.remove:
+            remove_skill(args.remove, install_dir)
         elif args.purge_cache:
             purge_cache(cache_dir)
         elif args.url:
