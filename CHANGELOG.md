@@ -2,6 +2,11 @@
 
 All notable changes to skill-installer are documented here.
 
+## [0.1.4] - 2026-04-04
+
+### Added
+- GitHub Release wird automatisch bei Tag-Push erstellt, mit dem CHANGELOG-Abschnitt der Version als Release Notes
+
 ## [0.1.3] - 2026-04-04
 
 ### Added
