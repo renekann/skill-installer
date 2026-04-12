@@ -2,6 +2,12 @@
 
 All notable changes to skill-installer are documented here.
 
+## [0.1.9] - 2026-04-12
+
+### Fixed
+- Support installing skills from repo-root `SKILL.md` URLs (for both `github.com/.../blob/.../SKILL.md` and `raw.githubusercontent.com/.../SKILL.md`)
+- Exclude `.git` metadata from copied skill contents during install and update
+
 ## [0.1.8] - 2026-04-04
 
 ### Added

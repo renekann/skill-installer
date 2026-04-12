@@ -60,6 +60,7 @@ Follow these steps exactly when releasing a new version:
 3. **Run tests**: `python3 -m pytest tests/ -v` — must all pass
 4. **Commit**: `git add CHANGELOG.md pyproject.toml && git commit -m "chore: release vx.y.z"`
 5. **Push**: `git push origin main`
+   - After pushing to `main`, explicitly ask whether to create and push a release tag now. Do not assume tagging.
 6. **Tag**: `git tag vx.y.z && git push origin vx.y.z`
 
 The GitHub Action then automatically:
