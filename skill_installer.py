@@ -65,6 +65,8 @@ def parse_github_url(url: str) -> dict:
             raise ValueError(f"Invalid raw GitHub URL: {url}")
         owner, repo, ref = parts[0], parts[1], parts[2]
         path = "/".join(parts[3:-1])
+        if not path and parts[-1] == "SKILL.md":
+            path = "."
     elif parsed.hostname == "github.com":
         parts = parsed.path.strip("/").split("/")
         if len(parts) < 4:
@@ -77,8 +79,12 @@ def parse_github_url(url: str) -> dict:
         ref = parts[3]
         if url_type == "blob":
             path = "/".join(parts[4:-1])
+            if not path and parts[-1] == "SKILL.md":
+                path = "."
         elif url_type == "tree":
             path = "/".join(parts[4:])
+            if not path:
+                path = "."
     else:
         raise ValueError(f"Unsupported URL host '{parsed.hostname}': {url}")
 
@@ -88,7 +94,10 @@ def parse_github_url(url: str) -> dict:
     if ".." in Path(path).parts:
         raise ValueError(f"URL path must not contain '..': {url}")
 
-    skill_name = path.rstrip("/").split("/")[-1]
+    if path == ".":
+        skill_name = repo
+    else:
+        skill_name = path.rstrip("/").split("/")[-1]
     return {
         "owner": owner,
         "repo": repo,
@@ -158,7 +167,7 @@ def install_skill(url: str, install_dir: Path, cache_dir: Path) -> None:
     if not source.is_dir():
         raise FileNotFoundError(f"Skill folder not found in repo: {parsed['path']}")
 
-    shutil.copytree(source, dest, symlinks=True)
+    shutil.copytree(source, dest, symlinks=True, ignore=shutil.ignore_patterns(".git"))
 
     now = datetime.now(timezone.utc).isoformat()
     metadata = {
@@ -187,6 +196,8 @@ def _apply_skill_update(skill_dir: Path, source: Path, mf: Path, meta: dict, old
             continue
         shutil.rmtree(item) if item.is_dir() else item.unlink()
     for item in source.iterdir():
+        if item.name == ".git":
+            continue
         dest_item = skill_dir / item.name
         shutil.copytree(item, dest_item, symlinks=True) if item.is_dir() else shutil.copy2(item, dest_item)
     meta["ref"] = new_ref

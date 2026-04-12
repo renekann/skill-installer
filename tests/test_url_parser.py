@@ -48,10 +48,28 @@ def test_unsupported_url_type_raises():
         parse_github_url("https://github.com/foo/bar/pulls/123")
 
 
-def test_blob_at_repo_root_raises():
-    # blob URL with file directly at repo root (no parent folder = no skill name)
-    with pytest.raises(ValueError, match="skill folder path"):
-        parse_github_url("https://github.com/foo/bar/blob/main/SKILL.md")
+def test_blob_at_repo_root_skill_file():
+    url = "https://github.com/foo/bar/blob/main/SKILL.md"
+    result = parse_github_url(url)
+    assert result == {
+        "owner": "foo",
+        "repo": "bar",
+        "ref": "main",
+        "path": ".",
+        "skill_name": "bar",
+    }
+
+
+def test_raw_at_repo_root_skill_file():
+    url = "https://raw.githubusercontent.com/foo/bar/main/SKILL.md"
+    result = parse_github_url(url)
+    assert result == {
+        "owner": "foo",
+        "repo": "bar",
+        "ref": "main",
+        "path": ".",
+        "skill_name": "bar",
+    }
 
 
 def test_path_traversal_in_url_raises():

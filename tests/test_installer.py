@@ -108,6 +108,33 @@ def test_install_skill(tmp_path):
         skill_installer._clone_url = original
 
 
+def test_install_skill_from_repo_root(tmp_path):
+    remote = make_local_repo(tmp_path, {
+        "SKILL.md": "# Root Skill",
+        "references/usage.md": "use it",
+    })
+    cache_dir = tmp_path / "cache"
+    install_dir = tmp_path / "skills"
+    install_dir.mkdir()
+
+    import skill_installer
+    original = skill_installer._clone_url
+    skill_installer._clone_url = lambda o, r: str(remote)
+
+    try:
+        install_skill(
+            "https://github.com/testowner/testrepo/blob/main/SKILL.md",
+            install_dir,
+            cache_dir,
+        )
+        skill_dir = install_dir / "testrepo"
+        assert (skill_dir / "SKILL.md").exists()
+        assert (skill_dir / "references" / "usage.md").exists()
+        assert not (skill_dir / ".git").exists()
+    finally:
+        skill_installer._clone_url = original
+
+
 def test_install_skill_already_exists(tmp_path):
     remote = make_local_repo(tmp_path, {"skills/my-skill/SKILL.md": "# My Skill"})
     cache_dir = tmp_path / "cache"
